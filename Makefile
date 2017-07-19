@@ -126,5 +126,11 @@ maintainer-make-release: bustle.cabal dist/build/autogen/version.txt
 	gpg --detach-sign --armor dist/bustle-`cat dist/build/autogen/version.txt`.tar.gz
 	gpg --detach-sign --armor dist/bustle-`cat dist/build/autogen/version.txt`-x86_64.tar.bz2
 
-.travis.yml: bustle.cabal make_travis_yml.hs
-	./make_travis_yml.hs $< libpcap-dev libgtk-3-dev libcairo2-dev happy-1.19.4 alex-3.1.3 > $@
+make_travis_yml_2.hs: Makefile
+	wget -O $@ https://raw.githubusercontent.com/hvr/multi-ghc-travis/master/make_travis_yml_2.hs
+	chmod +x $@
+
+.travis.yml: bustle.cabal make_travis_yml_2.hs
+	./make_travis_yml_2.hs $< libpcap-dev libgtk-3-dev libcairo2-dev happy-1.19.4 alex-3.1.3 > $@
+
+.PHONY: make_travis_yml_2.hs
