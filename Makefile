@@ -22,7 +22,7 @@ ICONS = \
 	$(foreach size,$(ICON_SIZES),data/icons/$(size)/org.freedesktop.Bustle.png) \
 	$(NULL)
 
-all: $(BINARIES) $(MANPAGE) $(DESKTOP_FILE) $(APPDATA_FILE) $(ICONS)
+all: $(BINARIES) $(DESKTOP_FILE) $(APPDATA_FILE) $(ICONS)
 
 BUSTLE_PCAP_SOURCES = c-sources/pcap-monitor.c c-sources/bustle-pcap.c
 BUSTLE_PCAP_GENERATED_HEADERS = dist/build/autogen/version.h
@@ -59,11 +59,13 @@ dist/build/autogen/version.txt: bustle.cabal
 dist/build/autogen/version.h: dist/build/autogen/version.txt
 	echo '#define BUSTLE_VERSION "'`cat $<`'"' > $@
 
-install: all
+install-bustle-pcap: all $(MANPAGE)
 	mkdir -p $(BINDIR)
 	cp $(BINARIES) $(BINDIR)
 	-mkdir -p $(MAN1DIR)
 	-cp $(MANPAGE) $(MAN1DIR)
+
+install: all
 	mkdir -p $(DATADIR)/applications
 	cp $(DESKTOP_FILE) $(DATADIR)/applications
 	mkdir -p $(DATADIR)/appdata
