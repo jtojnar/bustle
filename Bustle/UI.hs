@@ -211,8 +211,9 @@ loadLogWith getWindow logDetails = do
           displayError Nothing (printf (__ "Could not read '%s'") f) (Just e)
       Right () -> return ()
 
-startRecording :: B ()
-startRecording = do
+startRecording :: BusType
+               -> B ()
+startRecording busType = do
     wi <- consumeInitialWindow
 
     zt <- io $ getZonedTime
@@ -226,7 +227,7 @@ startRecording = do
     let mwindow = Just (wiWindow wi)
         progress = aChallengerAppears wi
         finished = finishedRecording wi filename
-    embedIO $ \r -> recorderRun filename mwindow progress
+    embedIO $ \r -> recorderRun busType filename mwindow progress
                                 (\p -> makeCallback (finished p) r)
 
 aChallengerAppears :: WindowInfo
@@ -346,14 +347,12 @@ emptyWindow = do
   window <- getW castToWindow "diagramWindow"
   header <- getW castToWidget "header"
 
-  [openItem, openTwoItem] <- mapM (getW castToMenuItem) ["open", "openTwo"]
-  [headerNew, headerSave, headerExport] <- mapM (getW castToButton) ["headerNew", "headerSave", "headerExport"]
+  [openItem, openTwoItem, recordSession, recordSystem] <- mapM (getW castToMenuItem) ["open", "openTwo", "recordSession", "recordSystem"]
+  [headerSave, headerExport] <- mapM (getW castToButton) ["headerSave", "headerExport"]
 
   viewStatistics <- getW castToCheckMenuItem "statistics"
   filterNames <- getW castToMenuItem "filter"
   aboutItem <- getW castToMenuItem "about"
-
-  [newButton, openButton] <- mapM (getW castToButton) ["newButton", "openButton"]
 
   [nb, statsBook] <- mapM (getW castToNotebook)
       ["diagramOrNot", "statsBook"]
@@ -369,13 +368,11 @@ emptyWindow = do
 
   -- File menu and related buttons
   embedIO $ \r -> do
-      let new = makeCallback startRecording r
-      forM [headerNew, newButton] $ \button ->
-          button `on` buttonActivated $ new
+      onMenuItemActivate recordSession $ makeCallback (startRecording BusTypeSession) r
+      onMenuItemActivate recordSystem  $ makeCallback (startRecording BusTypeSystem)  r
 
       let open = makeCallback openDialogue r
       onMenuItemActivate openItem open
-      openButton `on` buttonActivated $ open
 
       onMenuItemActivate openTwoItem $ widgetShowAll openTwoDialog
 

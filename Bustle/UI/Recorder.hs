@@ -20,6 +20,7 @@ module Bustle.UI.Recorder
   (
     recorderChooseFile
   , recorderRun
+  , BusType(..)
   )
 where
 
@@ -32,6 +33,8 @@ import Control.Monad.State (runStateT)
 import Text.Printf
 
 import qualified Control.Exception as C
+import System.GIO.Enums (IOErrorEnum(IoErrorCancelled))
+import System.Glib.GObject (quarkFromString)
 import System.Glib.GError
 import Graphics.UI.Gtk
 
@@ -87,13 +90,14 @@ processBatch pendingRef n label incoming = do
 
         return True
 
-recorderRun :: FilePath
+recorderRun :: BusType
+            -> FilePath
             -> Maybe Window
             -> RecorderIncomingCallback
             -> RecorderFinishedCallback
             -> IO ()
-recorderRun filename mwindow incoming finished = C.handle newFailed $ do
-    monitor <- monitorNew BusTypeSession filename
+recorderRun busType filename mwindow incoming finished = C.handle newFailed $ do
+    monitor <- monitorNew busType filename
     dialog <- dialogNew
 
     dialog `set` (map (windowTransientFor :=) (maybeToList mwindow))
@@ -121,6 +125,10 @@ recorderRun filename mwindow incoming finished = C.handle newFailed $ do
                   | otherwise -> return ()
 
     handlerId <- monitor `on` monitorMessageLogged $ updateLabel
+    errorHandlerId <- monitor `on` monitorError $ \_domain _code message -> do
+        dialogResponse dialog ResponseClose
+        displayError mwindow (toString message) Nothing
+
     n <- newMVar (0 :: Int)
     processor <- processBatch pendingRef n label incoming
     processorId <- timeoutAdd processor 200
@@ -139,6 +147,7 @@ recorderRun filename mwindow incoming finished = C.handle newFailed $ do
     dialog `after` response $ \_ -> do
         monitorStop monitor
         signalDisconnect handlerId
+        signalDisconnect errorHandlerId
         spinnerStop spinner
         timeoutRemove processorId
         -- Flush out any last messages from the queue.
@@ -149,8 +158,16 @@ recorderRun filename mwindow incoming finished = C.handle newFailed $ do
 
     widgetShowAll dialog
   where
-    newFailed (GError _ _ message) = do
-        displayError mwindow (toString message) Nothing
+    -- Filter out IoErrorCancelled. In theory one should use
+    --   catchGErrorJust IoErrorCancelled computation (\_ -> return ())
+    -- but IOErrorEnum does not have an instance for GError domain.
+    newFailed (GError domain code message) = do
+        finished False
+        gIoErrorQuark <- quarkFromString "g-io-error-quark"
+        let cancelled = fromEnum IoErrorCancelled
+        if domain == gIoErrorQuark && code == cancelled
+            then return ()
+            else displayError mwindow (toString message) Nothing
 
 recorderChooseFile :: FilePath
                    -> Maybe Window

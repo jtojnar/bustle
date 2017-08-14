@@ -29,6 +29,7 @@ module Bustle.Monitor
 
 -- * Signals
   , monitorMessageLogged
+  , monitorError
   )
 where
 
@@ -105,3 +106,18 @@ monitorMessageLogged :: Signal Monitor (Microseconds -> BS.ByteString -> IO ())
 monitorMessageLogged =
     Signal $ \after_ obj user ->
         connectGeneric "message-logged" after_ obj $ messageLoggedHandler user
+
+errorHandler :: (Quark -> Int -> String -> IO ())
+             -> a
+             -> CUInt
+             -> CInt
+             -> Ptr CChar
+             -> IO ()
+errorHandler user _obj domain code messagePtr = do
+    message <- peekCString messagePtr
+    failOnGError $ user domain (fromIntegral code) message
+
+monitorError :: Signal Monitor (Quark -> Int -> String -> IO ())
+monitorError =
+    Signal $ \after_ obj user ->
+        connectGeneric "error" after_ obj $ errorHandler user
