@@ -180,20 +180,38 @@ out:
 static void
 message_logged_cb (
     BustlePcapMonitor *pcap,
-    GDBusMessage *message,
-    gboolean is_incoming,
     glong sec,
     glong usec,
     guint8 *data,
     guint len,
     gpointer user_data)
 {
-    g_print ("(%s) %s -> %s: %u %s\n",
-        is_incoming ? "incoming" : "outgoing",
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GDBusMessage) message = g_dbus_message_new_from_blob (
+      data, len, G_DBUS_CAPABILITY_FLAGS_UNIX_FD_PASSING, &error);
+
+  if (message == NULL)
+    g_warning ("%s", error->message);
+  else
+    g_print ("%s -> %s: %d %s\n",
         g_dbus_message_get_sender (message),
         g_dbus_message_get_destination (message),
         g_dbus_message_get_message_type (message),
         g_dbus_message_get_member (message));
+}
+
+static void
+error_cb (
+    BustlePcapMonitor *pcap,
+    guint domain,
+    gint code,
+    const gchar *message,
+    gpointer user_data)
+{
+  GMainLoop *loop = user_data;
+
+  fprintf (stderr, "%s %d %s", g_quark_to_string (domain), code, message);
+  g_main_loop_quit (loop);
 }
 
 int
@@ -212,7 +230,8 @@ main (
   pcap = bustle_pcap_monitor_new (bus_type, filename, &error);
   if (pcap == NULL)
     {
-      fprintf (stderr, "%s", error->message);
+      fprintf (stderr, "%s %d %s",
+          g_quark_to_string (error->domain), error->code, error->message);
       g_clear_error (&error);
       exit (1);
     }
@@ -222,6 +241,7 @@ main (
         G_CALLBACK (message_logged_cb), NULL);
 
   loop = g_main_loop_new (NULL, FALSE);
+  g_signal_connect (pcap, "error", G_CALLBACK (error_cb), loop);
 
   if (!quiet)
     g_printf ("Logging D-Bus traffic to '%s'...\n", filename);
