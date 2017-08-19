@@ -178,19 +178,15 @@ bustle_pcap_monitor_class_init (BustlePcapMonitorClass *klass)
   /**
    * BustlePcapMonitor::message-logged:
    * @self: the monitor.
-   * @sec: seconds since 1970.
-   * @usec: microseconds! (These are not combined into a single %gint64 because
-   *  my version of gtk2hs crashes when it encounters %G_TYPE_UINT64 in a
-   *  #GValue.)
+   * @usec: microseconds since 1970.
    * @blob: an array of bytes containing the serialized message.
    * @length: the size in bytes of @blob.
    */
   signals[SIG_MESSAGE_LOGGED] = g_signal_new ("message-logged",
       BUSTLE_TYPE_PCAP_MONITOR, G_SIGNAL_RUN_FIRST,
       0, NULL, NULL,
-      NULL, G_TYPE_NONE, 4,
-      G_TYPE_LONG,
-      G_TYPE_LONG,
+      NULL, G_TYPE_NONE, 3,
+      G_TYPE_INT64,
       G_TYPE_POINTER,
       G_TYPE_UINT);
 
@@ -234,13 +230,15 @@ read_one (
   struct pcap_pkthdr *hdr;
   const guchar *blob;
   int ret;
+  gint64 ts_usec;
 
   ret = pcap_next_ex (priv->pcap_in, &hdr, &blob);
   switch (ret)
     {
       case 1:
+        ts_usec = (((gint64) hdr->ts.tv_sec) * G_USEC_PER_SEC) + hdr->ts.tv_usec;
         g_signal_emit (self, signals[SIG_MESSAGE_LOGGED], 0,
-            hdr->ts.tv_sec, hdr->ts.tv_usec, blob, hdr->caplen);
+            ts_usec, blob, hdr->caplen);
 
         /* cast necessary because pcap_dump has a type matching the callback
          * argument to pcap_loop()
