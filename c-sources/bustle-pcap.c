@@ -140,7 +140,8 @@ out:
 static void
 message_logged_cb (
     BustlePcapMonitor *pcap,
-    gint64 ts_usec,
+    glong sec,
+    glong usec,
     guint8 *data,
     guint len,
     gpointer user_data)
@@ -152,8 +153,7 @@ message_logged_cb (
   if (message == NULL)
     g_warning ("%s", error->message);
   else
-    g_print ("%" G_GINT64_FORMAT " %s -> %s: %d %s\n",
-        ts_usec,
+    g_print ("%s -> %s: %d %s\n",
         g_dbus_message_get_sender (message),
         g_dbus_message_get_destination (message),
         g_dbus_message_get_message_type (message),

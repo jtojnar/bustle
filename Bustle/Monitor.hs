@@ -32,7 +32,6 @@ module Bustle.Monitor
   )
 where
 
-import Data.Int (Int64)
 import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.C
@@ -92,13 +91,15 @@ monitorStop monitor = do
 
 messageLoggedHandler :: (Microseconds -> BS.ByteString -> IO ())
                      -> a
-                     -> Int64
+                     -> CLong
+                     -> CLong
                      -> Ptr CChar
                      -> CUInt
                      -> IO ()
-messageLoggedHandler user _obj µsec blob blobLength = do
+messageLoggedHandler user _obj sec usec blob blobLength = do
     blobBS <- BS.packCStringLen (blob, fromIntegral blobLength)
-    failOnGError $ user (fromIntegral µsec) blobBS
+    let µsec = fromIntegral sec * (10 ^ (6 :: Int)) + fromIntegral usec
+    failOnGError $ user µsec blobBS
 
 monitorMessageLogged :: Signal Monitor (Microseconds -> BS.ByteString -> IO ())
 monitorMessageLogged =
