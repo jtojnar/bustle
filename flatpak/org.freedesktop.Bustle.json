@@ -239,8 +239,8 @@
             "sources": [
                 {
                     "type": "git",
-                    "url": "https://anongit.freedesktop.org/git/bustle.git",
-                    "branch": "master"
+                    "url": "..",
+                    "branch": "HEAD"
                 }
             ],
             /* TODO: get -j in here too */

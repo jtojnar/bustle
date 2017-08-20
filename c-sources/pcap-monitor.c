@@ -318,6 +318,7 @@ initable_init (
   const gchar *dbus_monitor_argv_system[] = {
       "pkexec", "dbus-monitor", "--pcap", "--system", NULL
   };
+  /* TODO: if inside Flatpak, call HostCommand() instead. */
   const gchar * const *dbus_monitor_argv = NULL;
   FILE *dbus_monitor_filep = NULL;
   GInputStream *stdout_pipe = NULL;
